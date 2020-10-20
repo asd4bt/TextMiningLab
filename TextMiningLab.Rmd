@@ -1,0 +1,435 @@
+---
+title: "Text Mining Lab"
+author: "Aatmika Deshpande, Nick Kalinowski, Alden Summerville"
+date: "10/19/2020"
+output: 
+  html_document:
+    theme: journal
+    toc: TRUE
+    toc_float: TRUE
+editor_options:
+    chunk_output_type: console
+---
+
+```{r setup, include=FALSE, cache=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(tidytext)
+library(ggwordcloud)
+library(textdata)
+library(DT)
+library(readr)
+library(knitr)
+```
+
+
+## Background
+
+As consultants specializing in environmental policy, we are looking to use text mining and sentiment analysis on historical periodicals from 2006 up until now to be able to track the level of support regionally for environmental related issues. We want to be able to secretly track regional support for environmental issues so that we may better decide where to allocate funding to support environmental policy agendas.
+
+We are chosing to focus on articles that are related or deal with the topic of Climate Change, and want to look into the general sentiment of these articles, either positive or negative, relatively. We are using the LexusNexus search engine to do so, and have gather 100 articles from 6 different publications to conduct our analysis. 
+
+## Approach
+
+The publications chosen were the **Chicago Daily Herald**, the **New York Times**, the **Washington Post**, the **Atlanta Journal-Constitution**, the **Star Tribune (Minneapolis, MN)**, and the **Sun (Baltimore)**. 
+
+As evidenced by the spread of news articles, we've focused on first the entire U.S's general sentiment with climate change via the Washington Post and New York Times, then the Southeast via the Atlanta Journal-Constitution. We also looked in the mid-east coast with the Sun, and then more towards the mid-west with the Star Tribune and Chicago Daily Herald.
+
+### Loading Data
+
+The first step is to load in all of our data. Before we loaded in the data, we had to clean up the RTF files a bit and make it easier to load in, removing all the redundant and unnecessary coding and underlying aspects associated with an RTF file that appear when loading directly into R. This was accomplished by using an online [RTF to TXT file converter](https://document.online-convert.com/convert-to-txt) . After this cleaning was done, the files can be loaded into the R. 
+```{r, message=FALSE, cache=TRUE}
+StarTribune = read_lines("StarTribune.txt")
+StarTribuneData = tibble(StarTribune)
+
+PhillyInquirer = read_lines("PhillyInquirer.txt")
+PhillyInquirerData = tibble(PhillyInquirer)
+
+ATL = read_lines("ATL_Articles.txt")
+ATLData = tibble(ATL)
+
+DailyHerald = read_lines("Daily_Herald_climate_articles.txt")
+DailyHeraldData = tibble(DailyHerald)
+
+NYT = read_lines("NYT climate articles.txt")
+NYTData = tibble(NYT)
+
+WaPo = read_lines("WaPo Articles.txt")
+WaPoData = tibble(WaPo)
+```
+
+### Unnesting Tokens
+
+The next step is to actually use the unnest_tokens function from the tidytext data set to separate our RTF file of our 100 articles into a dataframe with each row representing a word from the corpus of texts. We also made sure to remove stop words from this corpus to account for them causing issues with our sentiment analysis, and then generated the counts for all the words that were left. 
+
+From here, the first chunk of the text file was also removed, which was a numbered list of the 100 articles that were used to create the corpus. Including this would've caused a potential skew in the word count as this information was not from the literal article, but just initially informative information.
+```{r, message=FALSE, warning=FALSE, cache=TRUE}
+StarTribuneData = StarTribuneData %>%
+  unnest_tokens(word, StarTribune) %>%
+  anti_join(stop_words, by="word") %>%
+  count(word, sort=TRUE)
+
+head(StarTribuneData, 10)
+
+PhillyInquirerData = PhillyInquirerData %>%
+  unnest_tokens(word, PhillyInquirer) %>%
+  anti_join(stop_words, by="word") %>%
+  count(word, sort=TRUE)
+
+head(PhillyInquirerData, 10)
+
+ATLData = ATLData %>%
+  unnest_tokens(word, ATL) %>%
+  anti_join(stop_words, by="word") %>%
+  count(word, sort=TRUE)
+
+head(ATLData, 10)
+
+DailyHeraldData = DailyHeraldData %>%
+  unnest_tokens(word, DailyHerald) %>%
+  anti_join(stop_words, by="word") %>%
+  count(word, sort=TRUE)
+
+head(DailyHeraldData, 10)
+
+NYTData = NYTData %>%
+  unnest_tokens(word, NYT) %>%
+  anti_join(stop_words, by="word") %>%
+  count(word, sort=TRUE)
+
+head(NYTData, 10)
+
+WaPoData = WaPoData %>%
+  unnest_tokens(word, WaPo) %>%
+  anti_join(stop_words, by="word") %>%
+  count(word, sort=TRUE)
+
+head(WaPoData, 10)
+```
+
+```{r, include=FALSE, cache=TRUE}
+StarTribuneData = StarTribuneData %>% 
+  mutate(publication = replicate(nrow(StarTribuneData), "Star Tribune"))
+
+PhillyInquirerData = PhillyInquirerData %>%
+  mutate(publication = replicate(nrow(PhillyInquirerData), "Philadelphia Inquirer"))
+
+ATLData = ATLData %>%
+  mutate(publication = replicate(nrow(ATLData), "Atlanta Journal-Constitution"))
+
+DailyHeraldData = DailyHeraldData %>%
+  mutate(publication = replicate(nrow(DailyHeraldData), "Chicago Daily Herald"))
+
+NYTData = NYTData %>%
+  mutate(publication = replicate(nrow(NYTData), "New York Times"))
+
+WaPoData = WaPoData %>%
+  mutate(publication = replicate(nrow(WaPoData), "Washington Post"))
+```
+
+### Assigning Sentiments
+
+From here we must decide which sentiment analysis method we'd like to use to move forward. The options are **bing**, **afinn**, and **nrc**. Bing classifies words into negative or positive sentiments, with 6,776 words loaded into this dataset and already included in the tidytext package. afinn and nrc are both from the textdata package, and are also good tables to use for sentiment analysis. afinn utilizes a positive to negative number scale to represent sentiments, with negative numbers being negative sentiment, 0 being neutral, and positive numbers being positive sentiment. nrc uses multiple different classifications to describe the sentiment of a word: trust, fear, negative, sadness, anger, surprise, positive, disgust, joy, and anticipation. 
+```{r, message=FALSE, cache=TRUE}
+get_sentiments("bing")
+get_sentiments("afinn")
+get_sentiments("nrc")
+```
+
+We will create 3 new datasets for each publication that joins (via an inner join) each of the 3 sentimental analysis table options to a publication so that we can analyze the results using all 3 to make the best possible conclusions. This allows all of the words to be assigned a sentiment 'score'.
+
+### Analyzing Sentiments{.tabset}
+
+#### bing
+
+Here we are joining the bing sentiment dataset to each of our 6 publications.
+```{r, message=FALSE, cache=TRUE}
+StarTribune_bing = StarTribuneData %>% 
+  inner_join(get_sentiments("bing"))
+
+PhillyInquirer_bing = PhillyInquirerData %>%
+  inner_join(get_sentiments("bing"))
+
+ATL_bing = ATLData %>%
+  inner_join(get_sentiments("bing"))
+
+DailyHerald_bing = DailyHeraldData %>%
+  inner_join(get_sentiments("bing"))
+
+NYT_bing = NYTData %>%
+  inner_join(get_sentiments("bing"))
+
+WaPo_bing = WaPoData %>%
+  inner_join(get_sentiments("bing"))
+```
+
+Here is a full list of each word from our 6 publications with their assigned negative or positive sentiment.
+```{r, echo=FALSE, cache=TRUE}
+datatable(StarTribune_bing)
+
+datatable(PhillyInquirer_bing)
+
+datatable(ATL_bing)
+
+datatable(DailyHerald_bing)
+
+datatable(NYT_bing)
+
+
+datatable(WaPo_bing)
+```
+
+Now we will move forward in conducting our sentiment analysis via the bing sentiment method.
+
+##### Quick Comparisons
+
+Below is simple tabling of each of the 6 publications to display their distribution in terms of counts for negative and positive words.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, cache=TRUE}
+bing_metadata = rbind(StarTribune_bing, PhillyInquirer_bing, ATL_bing, DailyHerald_bing, NYT_bing, WaPo_bing)
+
+bing_metadata$Publication = c(replicate(nrow(StarTribune_bing), "Star Tribune"), replicate(nrow(PhillyInquirer_bing), "Philadelphia Inquirer"), replicate(nrow(ATL_bing), "Atlanta Journal-Constitution"), replicate(nrow(DailyHerald_bing), "Chicago Daily Herald"), replicate(nrow(NYT_bing), "New York Times"), replicate(nrow(WaPo_bing), "Washington Post"))
+
+summary_table = bing_metadata %>% group_by(Publication) %>% summarise(negative = sum(sentiment=="negative"), positive = sum(sentiment=="positive"))
+
+kable(summary_table)
+```
+
+##### Visualization
+We can better compare the 6 publications through a visualization of their sentiment distribution on a histogram.
+
+```{r, echo=FALSE, cache=TRUE, message=FALSE}
+ggplot(bing_metadata, aes(x=sentiment)) + geom_bar() + facet_wrap(~Publication)
+```
+
+##### Word Clouds
+Now that we've been able to draw some conclusions on the general sentiments of our 6 publications, we can compare similarities in word choice against the 6 to see if the general topic of climate change has similar patterns throughout, or if each of our publications are more specialized with what realms of climate change they are targeting and covering more.
+
+```{r, include=FALSE}
+set.seed(49)
+```
+
+```{r, echo=FALSE, warning=FALSE, fig.align="center", cache=TRUE}
+ggplot(StarTribune_bing[1:250,], aes(label = word, size = n)
+       ) +
+  geom_text_wordcloud() +
+  theme_minimal() + ggtitle("Star Tribune Bing Word Cloud")
+
+ggplot(PhillyInquirer_bing[1:250,], aes(label = word, size = n)
+       ) +
+  geom_text_wordcloud() +
+  theme_minimal() + ggtitle("Philadelphia Inquirer Bing Word Cloud")
+
+ggplot(ATL_bing[1:250,], aes(label = word, size = n)
+       ) +
+  geom_text_wordcloud() +
+  theme_minimal() + ggtitle("Atlanta Journal-Constitution Bing Word Cloud")
+
+ggplot(DailyHerald_bing[1:250,], aes(label = word, size = n)
+       ) +
+  geom_text_wordcloud() +
+  theme_minimal() + ggtitle("Chicago Daily Herald Bing Word Cloud")
+
+ggplot(NYT_bing[1:250,], aes(label = word, size = n)
+       ) +
+  geom_text_wordcloud() +
+  theme_minimal() + ggtitle("New York Times Bing Word Cloud")
+
+ggplot(WaPo_bing[1:250,], aes(label = word, size = n)
+       ) +
+  geom_text_wordcloud() +
+  theme_minimal() + ggtitle("Washington Post Bing Word Cloud")
+```
+
+
+#### afinn
+
+```{r, message=FALSE, cache=TRUE}
+StarTribune_afinn = StarTribuneData %>% 
+  inner_join(get_sentiments("afinn"))
+
+PhillyInquirer_afinn = PhillyInquirerData %>%
+  inner_join(get_sentiments("afinn"))
+
+ATL_afinn = ATLData %>%
+  inner_join(get_sentiments("afinn"))
+
+DailyHerald_afinn = DailyHeraldData %>%
+  inner_join(get_sentiments("afinn"))
+
+NYT_afinn = NYTData %>%
+  inner_join(get_sentiments("afinn"))
+
+WaPo_afinn = WaPoData %>%
+  inner_join(get_sentiments("afinn"))
+```
+
+Here is a full list of each word from our 6 publications with their assigned numerical 'sentiment value'.
+```{r, echo=FALSE, cache=TRUE}
+datatable(StarTribune_afinn)
+
+datatable(PhillyInquirer_afinn)
+
+datatable(ATL_afinn)
+
+datatable(DailyHerald_afinn)
+
+datatable(NYT_afinn)
+
+datatable(WaPo_afinn)
+```
+
+Now we will move forward in conducting our sentiment analysis via the bing sentiment method.
+
+
+##### Quick Comparisons
+
+Below is simple tabling of each of the 6 publications to display their distribution in terms of counts for values of words.
+
+```{r, echo=FALSE, cache=TRUE}
+afinn_metadata = rbind(StarTribune_afinn, PhillyInquirer_afinn, ATL_afinn, DailyHerald_afinn, NYT_afinn, WaPo_afinn)
+
+summary_table2 = afinn_metadata %>% group_by(publication, value) %>% count() %>%
+  spread(key=value, value=n)
+
+kable(summary_table2)
+```
+
+
+##### Visualization
+We can better compare the 6 publications through a visualization of their sentiment distribution on a histogram.
+
+```{r, echo=FALSE, cache=TRUE, message=FALSE}
+ggplot(afinn_metadata, aes(x=value)) + geom_bar() + facet_wrap(~publication)
+```
+
+##### Word Clouds
+Now that we've been able to draw some conclusions on the general sentiments of our 6 publications, we can compare similarities in word choice against the 6 to see if the general topic of climate change has similar patterns throughout, or if each of our publications are more specialized with what realms of climate change they are targeting and covering more.
+
+
+```{r, echo=FALSE, warning=FALSE, fig.align="center", cache=TRUE}
+ggplot(StarTribune_afinn[1:250,], aes(label = word, size = n)
+       ) +
+  geom_text_wordcloud() +
+  theme_minimal() + ggtitle("Star Tribune Afinn Word Cloud")
+
+ggplot(PhillyInquirer_afinn[1:250,], aes(label = word, size = n)
+       ) +
+  geom_text_wordcloud() +
+  theme_minimal() + ggtitle("Philadelphia Inquirer Afinn Word Cloud")
+
+ggplot(ATL_afinn[1:250,], aes(label = word, size = n)
+       ) +
+  geom_text_wordcloud() +
+  theme_minimal() + ggtitle("Atlanta Journal-Constitution Afinn Word Cloud")
+
+ggplot(DailyHerald_afinn[1:250,], aes(label = word, size = n)
+       ) +
+  geom_text_wordcloud() +
+  theme_minimal() + ggtitle("Chicago Daily Herald Afinn Word Cloud")
+
+ggplot(NYT_afinn[1:250,], aes(label = word, size = n)
+       ) +
+  geom_text_wordcloud() +
+  theme_minimal() + ggtitle("New York Times Afinn Word Cloud")
+
+ggplot(WaPo_afinn[1:250,], aes(label = word, size = n)
+       ) +
+  geom_text_wordcloud() +
+  theme_minimal() + ggtitle("Washington Post Afinn Word Cloud")
+```
+
+#### nrc
+
+```{r, message=FALSE, cache=TRUE}
+StarTribune_nrc = StarTribuneData %>% 
+  inner_join(get_sentiments("nrc"))
+
+PhillyInquirer_nrc = PhillyInquirerData %>%
+  inner_join(get_sentiments("nrc"))
+
+ATL_nrc = ATLData %>%
+  inner_join(get_sentiments("nrc"))
+
+DailyHerald_nrc = DailyHeraldData %>%
+  inner_join(get_sentiments("nrc"))
+
+NYT_nrc = NYTData %>%
+  inner_join(get_sentiments("nrc"))
+
+WaPo_nrc = WaPoData %>%
+  inner_join(get_sentiments("nrc"))
+```
+
+Here is a full list of each word from our 6 publications with their assigned sentiment, with a larger expanse of categories and more detailed categorization.
+```{r, echo=FALSE, cache=TRUE}
+datatable(StarTribune_nrc)
+
+datatable(PhillyInquirer_nrc)
+
+datatable(ATL_nrc)
+
+datatable(DailyHerald_nrc)
+
+datatable(NYT_nrc)
+
+datatable(WaPo_nrc)
+```
+
+Now we will move forward in conducting our sentiment analysis via the bing sentiment method.
+
+##### Quick Comparisons
+
+Below is simple tabling of each of the 6 publications to display their distribution in terms of counts for word sentiments.
+
+```{r, echo=FALSE, cache=TRUE}
+nrc_metadata = rbind(StarTribune_nrc, PhillyInquirer_nrc, ATL_nrc, DailyHerald_nrc, NYT_nrc, WaPo_nrc)
+
+summary_table3 = nrc_metadata %>% group_by(publication, sentiment) %>% count() %>%
+  spread(key=sentiment, value=n) 
+
+kable(summary_table3)
+```
+
+
+##### Visualization
+We can better compare the 6 publications through a visualization of their sentiment distribution on a histogram.
+
+```{r, echo=FALSE, cache=TRUE, message=FALSE}
+ggplot(nrc_metadata, aes(x=sentiment)) + geom_bar() + coord_flip() + facet_wrap(~publication)
+```
+
+##### Word Clouds
+Now that we've been able to draw some conclusions on the general sentiments of our 6 publications, we can compare similarities in word choice against the 6 to see if the general topic of climate change has similar patterns throughout, or if each of our publications are more specialized with what realms of climate change they are targeting and covering more.
+
+```{r, echo=FALSE, warning=FALSE, fig.align="center", cache=TRUE}
+ggplot(StarTribune_nrc[1:250,], aes(label = word, size = n)
+       ) +
+  geom_text_wordcloud() +
+  theme_minimal() + ggtitle("Star Tribune NRC Word Cloud")
+
+ggplot(PhillyInquirer_nrc[1:250,], aes(label = word, size = n)
+       ) +
+  geom_text_wordcloud() +
+  theme_minimal() + ggtitle("Philadelphia Inquirer NRC Word Cloud")
+
+ggplot(ATL_nrc[1:250,], aes(label = word, size = n)
+       ) +
+  geom_text_wordcloud() +
+  theme_minimal() + ggtitle("Atlanta Journal-Constitution NRC Word Cloud")
+
+ggplot(DailyHerald_nrc[1:250,], aes(label = word, size = n)
+       ) +
+  geom_text_wordcloud() +
+  theme_minimal() + ggtitle("Chicago Daily Herald NRC Word Cloud")
+
+ggplot(NYT_nrc[1:250,], aes(label = word, size = n)
+       ) +
+  geom_text_wordcloud() +
+  theme_minimal() + ggtitle("New York Times NRC Word Cloud")
+
+ggplot(WaPo_nrc[1:250,], aes(label = word, size = n)
+       ) +
+  geom_text_wordcloud() +
+  theme_minimal() + ggtitle("Washington Post NRC Word Cloud")
+```
