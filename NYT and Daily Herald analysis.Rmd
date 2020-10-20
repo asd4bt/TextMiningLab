@@ -1,0 +1,96 @@
+---
+title: "NYT and Daily Herald Climate Analysis"
+author: "Alden Summerville"
+date: "10/19/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+
+library(tidyverse)
+library(tidytext)
+library(ggwordcloud)
+library(textdata)
+library(textreadr)
+
+setwd("/cloud/project/tidytext_lab")
+getwd()
+
+```
+
+```{r}
+#New York Times analysis
+
+NYT_data <- read_lines("NYT climate articles.RTF")
+
+NYT_data <- tibble(NYT_data)
+
+NYT_data$word <- as.character(NYT_data$NYT_data)
+
+NYT_data <- NYT_data %>%
+  unnest_tokens(word, NYT_data)%>%
+  anti_join(stop_words)%>%
+  count(word, sort=TRUE)
+View(NYT_data)
+
+get_sentiments('afinn') 
+
+get_sentiments('nrc')
+
+NYT_sentiment_afinn <- NYT_data %>%
+  inner_join(get_sentiments("afinn"))
+view(NYT_sentiment_afinn)
+
+NYT_sentiment_nrc <- NYT_data %>%
+  inner_join(get_sentiments("nrc"))
+view(NYT_sentiment_nrc)
+
+NYT_sentiment_bing <- NYT_data %>%
+  inner_join(get_sentiments("bing"))
+view(NYT_sentiment_bing)
+
+NYT_cloud <- NYT_sentiment_bing %>%
+  filter(n>7)
+  
+ggplot(NYT_cloud, aes(label = word, size = n, color = "green")) +
+  geom_text_wordcloud()
+
+#Daily Herald
+
+Herald_data <- read_lines("Daily Herald climate articles.RTF")
+
+Herald_data <- tibble(Herald_data)
+
+Herald_data$word <- as.character(Herald_data$Herald_data)
+
+Herald_data <- Herald_data %>%
+  unnest_tokens(word, Herald_data)%>%
+  anti_join(stop_words)%>%
+  count(word, sort=TRUE)
+View(Herald_data)
+
+Herald_sentiment_afinn <- Herald_data %>%
+  inner_join(get_sentiments("afinn"))
+view(Herald_sentiment_afinn)
+
+Herald_sentiment_nrc <- Herald_data %>%
+  inner_join(get_sentiments("nrc"))
+view(Herald_sentiment_nrc)
+
+Herald_sentiment_bing <- Herald_data %>%
+  inner_join(get_sentiments("bing"))
+view(Herald_sentiment_bing)
+
+Herald_cloud <- Herald_sentiment_bing %>%
+  filter(n>4)
+  
+ggplot(Herald_cloud, aes(label = word, size = n, color = "green")) +
+  geom_text_wordcloud()
+
+
+```
+
