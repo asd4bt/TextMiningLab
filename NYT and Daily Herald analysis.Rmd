@@ -17,9 +17,6 @@ library(ggwordcloud)
 library(textdata)
 library(textreadr)
 
-setwd("/cloud/project/tidytext_lab")
-getwd()
-
 ```
 
 ```{r}
