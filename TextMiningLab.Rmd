@@ -31,9 +31,9 @@ We are chosing to focus on articles that are related or deal with the topic of C
 
 ## Approach
 
-The publications chosen were the **Chicago Daily Herald**, the **New York Times**, the **Washington Post**, the **Atlanta Journal-Constitution**, the **Star Tribune (Minneapolis, MN)**, and the **Sun (Baltimore)**. 
+The publications chosen were the **Chicago Daily Herald**, the **New York Times**, the **Washington Post**, the **Atlanta Journal-Constitution**, the **Star Tribune (Minneapolis, MN)**, and the **Philadelphia Inquirer**. 
 
-As evidenced by the spread of news articles, we've focused on first the entire U.S's general sentiment with climate change via the Washington Post and New York Times, then the Southeast via the Atlanta Journal-Constitution. We also looked in the mid-east coast with the Sun, and then more towards the mid-west with the Star Tribune and Chicago Daily Herald.
+As evidenced by the spread of news articles, we've focused on first the entire U.S's general sentiment with climate change via the Washington Post and New York Times, then the Southeast via the Atlanta Journal-Constitution. We also looked in the northeast region with the Philadelphia Inquirer, and then more towards the mid-west with the Star Tribune and Chicago Daily Herald.
 
 ### Loading Data
 
@@ -198,9 +198,13 @@ kable(summary_table)
 ##### Visualization
 We can better compare the 6 publications through a visualization of their sentiment distribution on a histogram.
 
-```{r, echo=FALSE, cache=TRUE, message=FALSE}
-ggplot(bing_metadata, aes(x=sentiment)) + geom_bar() + facet_wrap(~Publication)
+```{r, echo=FALSE, cache=TRUE, message=FALSE, fig.align="center", out.width="75%"}
+ggplot(bing_metadata, aes(x=sentiment, fill=Publication)) + geom_bar() + facet_wrap(~Publication) + theme(legend.position="none")
 ```
+
+Out of the 6 publications we looked into, it's obvious that the general sentiment is negative for these articles, but more so noticeable with the New York Times, as well as the Washington Post, Atlanta Journal-Constitution, Philadelphia Inquirer, and Washington Post. 
+
+However, in thinking about climate change articles and scanning through a few of them before conducting our analysis, we've realized that most are reporting about the issue by explaining it as a threat and problem, something we need to focus a lot on because a lot of damage as already been caused and is coming from it. We think for this reason that it's important to be looking at where there is a heavier skew of negative sentiment, as we believe this would be indicative of a more strong focus on the topic and realizing its daunting impact.
 
 ##### Word Clouds
 Now that we've been able to draw some conclusions on the general sentiments of our 6 publications, we can compare similarities in word choice against the 6 to see if the general topic of climate change has similar patterns throughout, or if each of our publications are more specialized with what realms of climate change they are targeting and covering more.
@@ -210,58 +214,88 @@ set.seed(49)
 ```
 
 ```{r, echo=FALSE, warning=FALSE, fig.align="center", cache=TRUE}
-ggplot(StarTribune_bing[1:250,], aes(label = word, size = n)
+ggplot(StarTribune_bing[1:250,], aes(label = word, size = n, color=sentiment)
        ) +
   geom_text_wordcloud() +
   theme_minimal() + ggtitle("Star Tribune Bing Word Cloud")
 
-ggplot(PhillyInquirer_bing[1:250,], aes(label = word, size = n)
+ggplot(PhillyInquirer_bing[1:250,], aes(label = word, size = n, color=sentiment)
        ) +
   geom_text_wordcloud() +
   theme_minimal() + ggtitle("Philadelphia Inquirer Bing Word Cloud")
 
-ggplot(ATL_bing[1:250,], aes(label = word, size = n)
+ggplot(ATL_bing[1:250,], aes(label = word, size = n, color=sentiment)
        ) +
   geom_text_wordcloud() +
   theme_minimal() + ggtitle("Atlanta Journal-Constitution Bing Word Cloud")
 
-ggplot(DailyHerald_bing[1:250,], aes(label = word, size = n)
+ggplot(DailyHerald_bing[1:250,], aes(label = word, size = n, color=sentiment)
        ) +
   geom_text_wordcloud() +
   theme_minimal() + ggtitle("Chicago Daily Herald Bing Word Cloud")
 
-ggplot(NYT_bing[1:250,], aes(label = word, size = n)
+ggplot(NYT_bing[1:250,], aes(label = word, size = n, color=sentiment)
        ) +
   geom_text_wordcloud() +
   theme_minimal() + ggtitle("New York Times Bing Word Cloud")
 
-ggplot(WaPo_bing[1:250,], aes(label = word, size = n)
+ggplot(WaPo_bing[1:250,], aes(label = word, size = n, color=sentiment)
        ) +
   geom_text_wordcloud() +
   theme_minimal() + ggtitle("Washington Post Bing Word Cloud")
 ```
+
+Going off of the decision to focus in on the negative sentiments, we believe it's important to keep in mind the context of the situation that we are conducting analysis for. Climate change is an impending issue and, as such, it makes sense for it to be described in articles in a negative manner. Looking at the word clouds above, which have words color coded with blue being positive and red being negative sentiment, we can see the most prominent words of each category. Words like "support", "sustainability", and "protection" are categorized positively, while using words like "issue", "threat", "risk", "damage", etc. are categorized negatively. 
+
+One thing to keep in mind is the fact that "warm" and "warmer" were labeled as positive sentiment, which in relation to climate change should be regarded in a negative manner, as this is a problem caused by it.
+
+In general, after observing these word clouds, we've come to the conclusion, as prior, that the negative words seem to be indicative of a publication recognizing the important of climate change and its impacts and negative consequences, and thus would correlate to having higher support for trying to fix this and support policies that do so.
 
 
 #### afinn
 
 ```{r, message=FALSE, cache=TRUE}
 StarTribune_afinn = StarTribuneData %>% 
-  inner_join(get_sentiments("afinn"))
+  inner_join(get_sentiments("afinn")) %>%
+  mutate(sentiment = case_when(
+    value < 0 ~ "negative",
+    value > 0 ~ "positive"
+  ))
 
 PhillyInquirer_afinn = PhillyInquirerData %>%
-  inner_join(get_sentiments("afinn"))
+  inner_join(get_sentiments("afinn"))%>%
+  mutate(sentiment = case_when(
+    value < 0 ~ "negative",
+    value > 0 ~ "positive"
+  ))
 
 ATL_afinn = ATLData %>%
-  inner_join(get_sentiments("afinn"))
+  inner_join(get_sentiments("afinn"))%>%
+  mutate(sentiment = case_when(
+    value < 0 ~ "negative",
+    value > 0 ~ "positive"
+  ))
 
 DailyHerald_afinn = DailyHeraldData %>%
-  inner_join(get_sentiments("afinn"))
+  inner_join(get_sentiments("afinn"))%>%
+  mutate(sentiment = case_when(
+    value < 0 ~ "negative",
+    value > 0 ~ "positive"
+  ))
 
 NYT_afinn = NYTData %>%
-  inner_join(get_sentiments("afinn"))
+  inner_join(get_sentiments("afinn"))%>%
+  mutate(sentiment = case_when(
+    value < 0 ~ "negative",
+    value > 0 ~ "positive"
+  ))
 
 WaPo_afinn = WaPoData %>%
-  inner_join(get_sentiments("afinn"))
+  inner_join(get_sentiments("afinn"))%>%
+  mutate(sentiment = case_when(
+    value < 0 ~ "negative",
+    value > 0 ~ "positive"
+  ))
 ```
 
 Here is a full list of each word from our 6 publications with their assigned numerical 'sentiment value'.
@@ -297,47 +331,53 @@ kable(summary_table2)
 
 
 ##### Visualization
-We can better compare the 6 publications through a visualization of their sentiment distribution on a histogram.
+We can better compare the 6 publications through a visualization of their sentiment distribution on a histogram. We have also added a new column to our data that categorizes a value to be a positive sentiment if it's positive and negative sentiment if it's negative, and have also graphed this histogram to better and more easily see the negative and positive distributions again.
 
-```{r, echo=FALSE, cache=TRUE, message=FALSE}
-ggplot(afinn_metadata, aes(x=value)) + geom_bar() + facet_wrap(~publication)
+```{r, echo=FALSE, cache=TRUE, message=FALSE, fig.align="center", out.width="75%"}
+ggplot(afinn_metadata, aes(x=value, fill=publication)) + geom_bar() + facet_wrap(~publication) + theme(legend.position="none")
 ```
+
+Looking at the sentiment values assigned by the afinn sentiment method, where more negative values are more negative sentiments and more positive values are more positive sentiments, we see a similar pattern from the bing data. The general skew is slightly more towards the negative side, however overall seems to be more evenly distributed than bing. 
+
+Another thing to note is the most prominent sentiment 'values' being -2, -1, 1, and 2, with the range being -5 to 5. This reflects that the words with extreme sentiment one way or another are not used as much as words with more 'subtle' sentiments.
 
 ##### Word Clouds
 Now that we've been able to draw some conclusions on the general sentiments of our 6 publications, we can compare similarities in word choice against the 6 to see if the general topic of climate change has similar patterns throughout, or if each of our publications are more specialized with what realms of climate change they are targeting and covering more.
 
 
 ```{r, echo=FALSE, warning=FALSE, fig.align="center", cache=TRUE}
-ggplot(StarTribune_afinn[1:250,], aes(label = word, size = n)
+ggplot(StarTribune_afinn[1:250,], aes(label = word, size = n, color=sentiment)
        ) +
   geom_text_wordcloud() +
   theme_minimal() + ggtitle("Star Tribune Afinn Word Cloud")
 
-ggplot(PhillyInquirer_afinn[1:250,], aes(label = word, size = n)
+ggplot(PhillyInquirer_afinn[1:250,], aes(label = word, size = n, color=sentiment)
        ) +
   geom_text_wordcloud() +
   theme_minimal() + ggtitle("Philadelphia Inquirer Afinn Word Cloud")
 
-ggplot(ATL_afinn[1:250,], aes(label = word, size = n)
+ggplot(ATL_afinn[1:250,], aes(label = word, size = n, color=sentiment)
        ) +
   geom_text_wordcloud() +
   theme_minimal() + ggtitle("Atlanta Journal-Constitution Afinn Word Cloud")
 
-ggplot(DailyHerald_afinn[1:250,], aes(label = word, size = n)
+ggplot(DailyHerald_afinn[1:250,], aes(label = word, size = n, color=sentiment)
        ) +
   geom_text_wordcloud() +
   theme_minimal() + ggtitle("Chicago Daily Herald Afinn Word Cloud")
 
-ggplot(NYT_afinn[1:250,], aes(label = word, size = n)
+ggplot(NYT_afinn[1:250,], aes(label = word, size = n, color=sentiment)
        ) +
   geom_text_wordcloud() +
   theme_minimal() + ggtitle("New York Times Afinn Word Cloud")
 
-ggplot(WaPo_afinn[1:250,], aes(label = word, size = n)
+ggplot(WaPo_afinn[1:250,], aes(label = word, size = n, color=sentiment)
        ) +
   geom_text_wordcloud() +
   theme_minimal() + ggtitle("Washington Post Afinn Word Cloud")
 ```
+
+The word clouds generated from this sentiment method look a bit different from those in bing, however our general conclusion is the same in looking at the words in the cloud. The negative sentiments are more so recognizing the impact of the issue and highlighting the problem, while the blue is seeming to be using more positive 'buzz words' per say to appear positively but do not really reflect the idea that they'd necessarily support an environmentalist policy or support efforts to combat climate change. 
 
 #### nrc
 
@@ -395,41 +435,75 @@ kable(summary_table3)
 ##### Visualization
 We can better compare the 6 publications through a visualization of their sentiment distribution on a histogram.
 
-```{r, echo=FALSE, cache=TRUE, message=FALSE}
-ggplot(nrc_metadata, aes(x=sentiment)) + geom_bar() + coord_flip() + facet_wrap(~publication)
+```{r, echo=FALSE, cache=TRUE, message=FALSE, fig.align="center", out.width="75%"}
+ggplot(nrc_metadata, aes(x=sentiment, fill=publication)) + geom_bar() + coord_flip() + facet_wrap(~publication) + theme(legend.position="none")
 ```
+
+The NRC sentiment is a bit more detailed than the other two have been. Words are separated into multiple categories in addition to just positive and negative sentiment. Here we see that for the most part the bars for negative and positive words are even, if anything a bit higher on the positive side. Thus, we are focusing more on the distribution of words within the other categories to make our conclusions.
+
+Trust is the first category we think should be recognized, and it's associated with words such as 'president', and other government-related terms. We do not think we can make much of a conclusion from higher trust sentiments, given that this could be swayed in either direction of either supporting or not supporting governmental policies, and should be regarded as a neutral term used in both situations. 
+Fear, however, is a more impactful sentiment to be looking at, which is indicative of the articles concerns of the impact of climate change, as well as anger and sadness.
+
 
 ##### Word Clouds
 Now that we've been able to draw some conclusions on the general sentiments of our 6 publications, we can compare similarities in word choice against the 6 to see if the general topic of climate change has similar patterns throughout, or if each of our publications are more specialized with what realms of climate change they are targeting and covering more.
 
 ```{r, echo=FALSE, warning=FALSE, fig.align="center", cache=TRUE}
-ggplot(StarTribune_nrc[1:250,], aes(label = word, size = n)
+ggplot(StarTribune_nrc[1:250,], aes(label = word, size = n, color="green")
        ) +
   geom_text_wordcloud() +
   theme_minimal() + ggtitle("Star Tribune NRC Word Cloud")
 
-ggplot(PhillyInquirer_nrc[1:250,], aes(label = word, size = n)
+ggplot(PhillyInquirer_nrc[1:250,], aes(label = word, size = n, color="green")
        ) +
   geom_text_wordcloud() +
   theme_minimal() + ggtitle("Philadelphia Inquirer NRC Word Cloud")
 
-ggplot(ATL_nrc[1:250,], aes(label = word, size = n)
+ggplot(ATL_nrc[1:250,], aes(label = word, size = n, color="green")
        ) +
   geom_text_wordcloud() +
   theme_minimal() + ggtitle("Atlanta Journal-Constitution NRC Word Cloud")
 
-ggplot(DailyHerald_nrc[1:250,], aes(label = word, size = n)
+ggplot(DailyHerald_nrc[1:250,], aes(label = word, size = n, color="green")
        ) +
   geom_text_wordcloud() +
   theme_minimal() + ggtitle("Chicago Daily Herald NRC Word Cloud")
 
-ggplot(NYT_nrc[1:250,], aes(label = word, size = n)
+ggplot(NYT_nrc[1:250,], aes(label = word, size = n, color="green")
        ) +
   geom_text_wordcloud() +
   theme_minimal() + ggtitle("New York Times NRC Word Cloud")
 
-ggplot(WaPo_nrc[1:250,], aes(label = word, size = n)
+ggplot(WaPo_nrc[1:250,], aes(label = word, size = n, color="green")
        ) +
   geom_text_wordcloud() +
   theme_minimal() + ggtitle("Washington Post NRC Word Cloud")
 ```
+
+The main conclusion to recognize from these word clouds is the very clear and obvious word 'change' being front and center. This could be due to its use in pairing with 'climate change' and any external use referencing the need for change, which could've cause its high frequency. This word is categorized as fear, which is important to note when looking at the histogram plots from above and remember that they may be slightly higher than reality due to this word's prominent in the corpuses.
+
+### Conclusions and Recommendations
+
+Now, moving forward with conclusions and recommendations, we are focusing on looking more into comparing sentiments across the publications so that we can decide where to focus lobbying efforts for more environmental policies. 
+
+#### Conclusions
+
+The New York Times and Washington Post are both national newspapers; for all 3 sentiment methods they've reflected a clear country-wide recognition of climate change and its 'negative' sentiment. We are now focusing more into the other 4 publications used to see which area of the country to be targeting - northeast, southeast, midwest.
+
+Looking at the bing sentiments, the Philadelphia Inquirer and Atlanta Journal-Constitution have a higher skew towards negative sentiment, while the Chicago Daily Herald and Star Tribune have sentiment frequencies that are closer together.
+
+Looking at the afinn sentiments, we see the same results, with noticably higher generally negative sentiment for those two publications in comparison the the more midwest-regioned ones.
+
+Looking at the nrc sentiments, the Chicago and Minnesota newspapers actually have slightly more positive than negative sentiment words, while the north and south east publications are closer to equal. However, fear, anger, and sadness words all, once again, show higher counts in the Atlanta and Philadelphia papers than the other two.
+
+In total for all 3 sentiments, as evidenced by the word clouds, we recognized that we must take into consideration the context of what we're analyzing and looking at, the issue being climate change. Publications and articles that reflect higher positive connotations are using words like 'save', 'care', 'sustainability' etc. For the most part, these words are primarily positive 'buzz words' that have little substance in terms of really attacking the climate change topic at hand. With this being a surface level, initial exploratory effort, we think that a more in-depth analysis could be done if only words that are positive for this situation are filtered for, like 'clean', 'grant', 'solution', 'sustainability', etc. and then a sentiment analysis done again, which takes out the redundant positively connotated words and provides a more robust analysis. 
+
+The negatively connotated are blunt and direct, and reflect the severity and direness of climate change. The publications issue out more focused articles that detail climate change issues and recognize the problem. We think these areas would be more responsive to environmental policies given their current and clear recognition and understanding of what's going on. Often times actually accepting the problem and addressing it as an issue is the more difficult part with making change happen, and these areas have already done so. 
+
+In general, it is important to also do a general glance over in terms of what the top words are for both positive and negative connotations to make sure that they are relevant in context of climate change. Looking at words with top frequencies can also help tell from initial glance what the potential focuses are in terms of issues for each region. For example, looking back at the top 10 words for each of the 6 publications, Minnesota has energy, carbon, and water as top words, while warming and gas are top words in Philadelphia and warming and energy in Atlanta. Using this as an initial starting point, we can also try to recognize what issues are of importance to what areas and use this as leverage when lobbying policies. Carbon emissions, climate change, and energy are popular nationwide.
+
+#### Recommendation
+
+The Atlanta Journal-Constitution and Philadelphia Inquirer have recognizably higher counts of words with negative connotations than the two midwest publications, which we've deemed to be of important in this analysis. Thus we recommend that our client look further into these two locations first, gathering and looking into corpuses of articles from other publications from those areas and conducting the same type of analysis, but more detailed. We need to make sure that the Philadelphia Inquirer and Atlanta Journal Constitution did not just happened to be more focused on the direness of climate change than the general consensus of the location of the country they're in. Comparing each of these two publications with others in their area for similar sentiments will solify that these are ideal locations to put more effort into learning about in terms of their current environmental issues and policies, as we know they would be good locations that would be receptive to environmental policies. 
+
+This is not to say that the Chicago and Minnesota publications are not in support of climate change related policies, just that the first two seem to be, from initial analysis, better locations to start focus on. We also recommend, if funds and time allow, to look into the midwest region, however we realize that these areas are ***relatively*** lower in negative sentiment. 
